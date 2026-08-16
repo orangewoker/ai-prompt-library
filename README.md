@@ -86,13 +86,15 @@ curl -X POST http://localhost:8765/api/v1/random \
 
 ## 7. ComfyUI 插件
 
-将 `comfyui_plugin/ComfyUI-VisualPromptLibrary` 整个目录复制到 `ComfyUI/custom_nodes/`，然后执行：
+插件目录：`comfyui_plugin/ComfyUI-VisualPromptLibrary`。将整个目录复制到 `ComfyUI/custom_nodes/`，然后执行：
 
 ```bash
 pip install -r ComfyUI-VisualPromptLibrary/requirements.txt
 ```
 
-重启 ComfyUI 后，在 `Visual Prompt Library/提示词库` 找到两个节点。节点中服务器地址使用 ComfyUI 能访问到的地址，API Key 与 `.env` 中一致。分类输入支持分类 ID 或名称，多个分类用逗号分隔。
+Windows 便携版使用 `python_embeded\\python.exe -m pip install -r ...\\requirements.txt`。重启 ComfyUI 后，在 `Visual Prompt Library/提示词库` 找到“视觉提示词库 · 随机抽取”和“视觉提示词库 · 指定素材”两个节点。分类会在每次执行时从服务器动态读取，支持分类 ID/名称和多分类逗号筛选；网络错误会转换为中文节点错误。
+
+服务器地址不能带 `/api/v1`：同机直连使用 `http://127.0.0.1:8765`，ComfyUI 在 Docker 中使用 `http://host.docker.internal:8765`，飞牛上使用 `http://飞牛IP:8765`。API Key 填网页“系统设置 → ComfyUI 访问密钥”，不是 LM Studio 的 Key。详细安装和排查见 `comfyui_plugin/ComfyUI-VisualPromptLibrary/README.md`。
 
 ## 8. 数据、备份与飞牛 OS
 
@@ -120,6 +122,7 @@ docker compose -f docker-compose.fnos.yml logs -f visual-prompt-library
 
 6. 浏览器打开 `http://飞牛IP:8765`，使用 `.env` 中的管理员账号密码登录。
 7. 首次登录后进入“系统设置”修改 ComfyUI 密钥，并在 AI 服务管理中填写 LM Studio 或其他视觉模型服务。
+8. 安装 ComfyUI 插件：复制 `comfyui_plugin/ComfyUI-VisualPromptLibrary` 到 `ComfyUI/custom_nodes/`，在 ComfyUI Python 环境执行 `pip install -r requirements.txt`，重启 ComfyUI。节点服务器地址填 `http://飞牛IP:8765`，API Key 填网页系统设置中的 ComfyUI 密钥。
 
 如果 GHCR 镜像暂时无法拉取，也可以在飞牛上使用源码构建：下载整个 GitHub 仓库 ZIP 并解压，在项目根目录执行：
 

@@ -36,11 +36,15 @@ async def lifespan(app: FastAPI):
             db.add(AppSetting(key="comfyui_api_key", value=settings.comfyui_api_key))
         if not db.query(PromptProfile).count():
             db.add(PromptProfile(name="视觉分析专家 V1", system_prompt=DEFAULT_SYSTEM_PROMPT, temperature=0.2, max_tokens=1200))
-        stuck = db.query(Job).filter(Job.status == "processing").all()
+        pending_job_ids = []
+        stuck = db.query(Job).filter(Job.status.in_(["processing", "pending"])).all()
         for job in stuck:
-            job.status = "pending"; asset = db.get(Asset, job.asset_id)
+            job.status = "pending"; pending_job_ids.append(job.id); asset = db.get(Asset, job.asset_id)
             if asset: asset.status = "pending"
         db.commit()
+        # 容器重启后自动恢复未完成任务，避免任务永久停留在 pending。
+        for job_id in pending_job_ids:
+            queue_job(job_id)
     finally:
         db.close()
     yield
@@ -339,10 +343,18 @@ def delete_asset(asset_id: int, db: Session = Depends(get_db), current_user: Use
 
 
 @app.get("/api/v1/jobs")
-def list_jobs(status: str | None = None, db: Session = Depends(get_db), _: bool = Depends(require_auth)):
+def list_jobs(status: str | None = None, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     query = db.query(Job).order_by(Job.created_at.desc())
     if status: query = query.filter(Job.status == status)
-    return [{"id": j.id, "asset_id": j.asset_id, "status": j.status, "error_message": j.error_message, "created_at": j.created_at, "started_at": j.started_at, "finished_at": j.finished_at} for j in query.limit(200).all()]
+    allowed = allowed_category_ids(current_user)
+    rows = []
+    for job in query.limit(200).all():
+        asset = db.get(Asset, job.asset_id)
+        if not asset: continue
+        if allowed is not None and asset.category_id not in allowed: continue
+        category = db.get(Category, asset.category_id)
+        rows.append({"id": job.id, "asset_id": job.asset_id, "original_filename": asset.original_filename, "thumbnail_url": f"/media/{asset.thumbnail_path}", "category_id": asset.category_id, "category_name": category.name if category else "", "asset_status": asset.status, "status": job.status, "error_message": job.error_message, "created_at": job.created_at, "started_at": job.started_at, "finished_at": job.finished_at})
+    return rows
 
 
 @app.post("/api/v1/random")

@@ -98,7 +98,7 @@ pip install -r ComfyUI-VisualPromptLibrary/requirements.txt
 
 所有持久化数据在 `/app/data`，宿主机映射到 `./data`，包括 `app.db`、`images/`、`thumbnails/`、`exports/`、`backups/`、`logs/`。网页“导入导出”可下载完整 ZIP 备份或分类 JSON。
 
-飞牛 OS 完整安装步骤：
+飞牛 OS 完整安装步骤（推荐使用已发布镜像）：
 
 1. 在飞牛 Docker 应用中创建目录 `/vol1/1000/visual-prompt-library/data`。
 2. 下载仓库中的 `docker-compose.fnos.yml` 和 `.env.example`，将 `.env.example` 复制为同目录 `.env`。
@@ -120,6 +120,18 @@ docker compose -f docker-compose.fnos.yml logs -f visual-prompt-library
 
 6. 浏览器打开 `http://飞牛IP:8765`，使用 `.env` 中的管理员账号密码登录。
 7. 首次登录后进入“系统设置”修改 ComfyUI 密钥，并在 AI 服务管理中填写 LM Studio 或其他视觉模型服务。
+
+如果 GHCR 镜像暂时无法拉取，也可以在飞牛上使用源码构建：下载整个 GitHub 仓库 ZIP 并解压，在项目根目录执行：
+
+```bash
+cp .env.example .env
+# 编辑 .env，至少修改 ADMIN_PASSWORD、API_KEY、COMFYUI_API_KEY
+docker compose -f docker-compose.fnos-build.yml build
+docker compose -f docker-compose.fnos-build.yml up -d
+docker compose -f docker-compose.fnos-build.yml ps
+```
+
+源码构建文件是 `docker-compose.fnos-build.yml`，数据仍然保存在 `/vol1/1000/visual-prompt-library/data`。飞牛需要能访问 Docker Hub 以下载 Node/Python 基础镜像；构建期间不要同时启动镜像版 Compose。
 
 飞牛 OS 使用的 Compose 文件：
 

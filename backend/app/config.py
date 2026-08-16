@@ -32,7 +32,11 @@ class Settings(BaseSettings):
     def backup_dir(self) -> Path:
         return self.data_dir / "backups"
 
+    @property
+    def avatar_dir(self) -> Path:
+        return self.data_dir / "avatars"
+
 
 settings = Settings()
-for directory in (settings.data_dir, settings.image_dir, settings.thumbnail_dir, settings.export_dir, settings.backup_dir, settings.data_dir / "logs"):
+for directory in (settings.data_dir, settings.image_dir, settings.thumbnail_dir, settings.export_dir, settings.backup_dir, settings.avatar_dir, settings.data_dir / "logs"):
     directory.mkdir(parents=True, exist_ok=True)

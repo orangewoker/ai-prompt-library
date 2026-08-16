@@ -19,6 +19,7 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(30), default="admin")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    avatar_path: Mapped[str] = mapped_column(String(500), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     category_access: Mapped[list["Category"]] = relationship(secondary=user_category_access, lazy="selectin")
 

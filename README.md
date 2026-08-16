@@ -98,12 +98,35 @@ pip install -r ComfyUI-VisualPromptLibrary/requirements.txt
 
 所有持久化数据在 `/app/data`，宿主机映射到 `./data`，包括 `app.db`、`images/`、`thumbnails/`、`exports/`、`backups/`、`logs/`。网页“导入导出”可下载完整 ZIP 备份或分类 JSON。
 
-飞牛 OS 可直接使用已构建镜像：
+飞牛 OS 完整安装步骤：
+
+1. 在飞牛 Docker 应用中创建目录 `/vol1/1000/visual-prompt-library/data`。
+2. 下载仓库中的 `docker-compose.fnos.yml` 和 `.env.example`，将 `.env.example` 复制为同目录 `.env`。
+3. 修改 `.env` 中的 `ADMIN_PASSWORD`、`API_KEY`、`COMFYUI_API_KEY`。
+4. 如果使用 GHCR 私有镜像，先在飞牛终端登录：
+
+```bash
+docker login ghcr.io
+```
+
+5. 在 `docker-compose.fnos.yml` 所在目录启动：
+
+```bash
+docker compose -f docker-compose.fnos.yml pull
+docker compose -f docker-compose.fnos.yml up -d
+docker compose -f docker-compose.fnos.yml ps
+docker compose -f docker-compose.fnos.yml logs -f visual-prompt-library
+```
+
+6. 浏览器打开 `http://飞牛IP:8765`，使用 `.env` 中的管理员账号密码登录。
+7. 首次登录后进入“系统设置”修改 ComfyUI 密钥，并在 AI 服务管理中填写 LM Studio 或其他视觉模型服务。
+
+飞牛 OS 使用的 Compose 文件：
 
 ```yaml
 services:
   visual-prompt-library:
-    image: USERNAME/visual-prompt-library:v1.0.0
+    image: ghcr.io/orangewoker/ai-prompt-library:latest
     ports:
       - "8765:8765"
     volumes:
@@ -112,6 +135,8 @@ services:
       - .env
     restart: unless-stopped
 ```
+
+升级版本：备份数据后执行 `docker compose -f docker-compose.fnos.yml pull && docker compose -f docker-compose.fnos.yml up -d`。数据库和图片都在 `/vol1/1000/visual-prompt-library/data`，升级不会删除。
 
 ## 9. 镜像构建与发布准备
 

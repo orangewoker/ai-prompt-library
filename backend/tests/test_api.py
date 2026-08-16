@@ -66,3 +66,16 @@ def test_user_category_scope_and_comfyui_key():
         client.delete(f"/api/v1/users/{user['id']}", headers=admin_headers)
         client.delete(f"/api/v1/categories/{visible['id']}", headers=admin_headers)
         client.delete(f"/api/v1/categories/{hidden['id']}", headers=admin_headers)
+
+
+def test_avatar_upload_is_saved_and_returned():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    with TestClient(app) as client:
+        headers = auth_headers(client)
+        image = BytesIO(); Image.new("RGB", (80, 60), "purple").save(image, "PNG"); image.seek(0)
+        response = client.post("/api/v1/users/1/avatar", headers=headers, files={"file": ("avatar.png", image, "image/png")})
+        assert response.status_code == 200
+        assert response.json()["avatar_url"].endswith(".webp")
+        user = client.get("/api/v1/users", headers=headers).json()[0]
+        assert user["avatar_url"].endswith(".webp")

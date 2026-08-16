@@ -5,6 +5,8 @@ import mimetypes
 import random
 import shutil
 import zipfile
+from io import BytesIO
+from uuid import uuid4
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
@@ -12,7 +14,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import func, or_
+from sqlalchemy import func, inspect, or_, text
 from sqlalchemy.orm import Session, joinedload
 from .config import settings
 from .constants import DEFAULT_SYSTEM_PROMPT
@@ -29,6 +31,10 @@ logger = logging.getLogger("visual-prompt-library")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(engine)
+    # SQLite create_all 不会给已有 users 表补列，兼容已经运行过的旧数据库。
+    if "avatar_path" not in {column["name"] for column in inspect(engine).get_columns("users")}:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ADD COLUMN avatar_path VARCHAR(500) DEFAULT ''"))
     db = SessionLocal()
     try:
         ensure_admin(db)
@@ -64,7 +70,7 @@ def allowed_category_ids(user: User) -> set[int] | None:
 
 
 def serialize_user(user: User):
-    return {"id": user.id, "username": user.username, "role": user.role, "enabled": user.enabled, "category_ids": [c.id for c in user.category_access], "category_names": [c.name for c in user.category_access], "created_at": user.created_at}
+    return {"id": user.id, "username": user.username, "role": user.role, "enabled": user.enabled, "avatar_url": f"/media/{user.avatar_path}" if user.avatar_path else "", "category_ids": [c.id for c in user.category_access], "category_names": [c.name for c in user.category_access], "created_at": user.created_at}
 
 
 def serialize_asset(a: Asset, detail=False):
@@ -86,7 +92,7 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == payload.username).first()
     if not user or not user.enabled or not verify_password(payload.password, user.password_hash):
         raise HTTPException(401, "用户名或密码错误")
-    return {"access_token": issue_token(user.username), "token_type": "bearer", "username": user.username, "user_id": user.id, "role": user.role, "category_ids": [c.id for c in user.category_access]}
+    return {"access_token": issue_token(user.username), "token_type": "bearer", "username": user.username, "user_id": user.id, "role": user.role, "avatar_url": f"/media/{user.avatar_path}" if user.avatar_path else "", "category_ids": [c.id for c in user.category_access]}
 
 
 @app.get("/api/v1/users")
@@ -140,6 +146,29 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User 
     if user.id == current_user.id or user.username == settings.admin_username:
         raise HTTPException(400, "不能删除当前管理员或系统主账号")
     db.delete(user); db.commit(); return {"ok": True}
+
+
+@app.post("/api/v1/users/{user_id}/avatar")
+async def upload_avatar(user_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    user = db.get(User, user_id)
+    if not user: raise HTTPException(404, "账号不存在")
+    if current_user.id != user_id and current_user.role != "admin": raise HTTPException(403, "只能修改自己的头像")
+    if not file.filename or Path(file.filename).suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp"}:
+        raise HTTPException(400, "头像只支持 JPG、PNG、WEBP")
+    from PIL import Image
+    data = await file.read()
+    try:
+        with Image.open(BytesIO(data)) as image:
+            image.thumbnail((256, 256))
+            output = BytesIO(); image.convert("RGB").save(output, "WEBP", quality=88)
+    except Exception as exc:
+        raise HTTPException(400, f"头像图片无法读取：{str(exc)[:120]}") from exc
+    filename = f"user_{user.id}_{uuid4().hex}.webp"
+    path = settings.avatar_dir / filename
+    path.write_bytes(output.getvalue())
+    if user.avatar_path: (settings.data_dir / user.avatar_path).unlink(missing_ok=True)
+    user.avatar_path = str(path.relative_to(settings.data_dir)); db.commit(); db.refresh(user)
+    return {"ok": True, "avatar_url": f"/media/{user.avatar_path}"}
 
 
 @app.get("/api/v1/settings")
@@ -383,7 +412,7 @@ def backup(db: Session = Depends(get_db), _: User = Depends(require_admin)):
     db.commit(); path = settings.backup_dir / f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
         if (settings.data_dir / "app.db").exists(): archive.write(settings.data_dir / "app.db", "app.db")
-        for folder in (settings.image_dir, settings.thumbnail_dir):
+        for folder in (settings.image_dir, settings.thumbnail_dir, settings.avatar_dir):
             for item in folder.glob("*"): archive.write(item, str(item.relative_to(settings.data_dir)))
     return FileResponse(path, media_type="application/zip", filename=path.name)
 

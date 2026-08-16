@@ -1,6 +1,6 @@
 services:
   visual-prompt-library:
-    image: ghcr.io/orangewoker/ai-prompt-library:latest
+    image: allenpie/visual-prompt-library:latest
     container_name: visual-prompt-library
     ports:
       - "8765:8765"

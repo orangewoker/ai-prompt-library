@@ -100,15 +100,15 @@ Windows 便携版使用 `python_embeded\\python.exe -m pip install -r ...\\requi
 
 所有持久化数据在 `/app/data`，宿主机映射到 `./data`，包括 `app.db`、`images/`、`thumbnails/`、`exports/`、`backups/`、`logs/`。网页“导入导出”可下载完整 ZIP 备份或分类 JSON。
 
-飞牛 OS 完整安装步骤（推荐使用已发布镜像）：
+飞牛 OS 完整安装步骤（Docker Hub 镜像）：
 
 1. 在飞牛 Docker 应用中创建目录 `/vol1/1000/visual-prompt-library/data`。
 2. 下载仓库中的 `docker-compose.fnos.yml` 和 `.env.example`，将 `.env.example` 复制为同目录 `.env`。
 3. 修改 `.env` 中的 `ADMIN_PASSWORD`、`API_KEY`、`COMFYUI_API_KEY`。
-4. 如果使用 GHCR 私有镜像，先在飞牛终端登录：
+4. Docker Hub 镜像为公开镜像，通常不需要登录；如遇到匿名拉取限流，可先在飞牛终端登录：
 
 ```bash
-docker login ghcr.io
+docker login
 ```
 
 5. 在 `docker-compose.fnos.yml` 所在目录启动：
@@ -124,7 +124,7 @@ docker compose -f docker-compose.fnos.yml logs -f visual-prompt-library
 7. 首次登录后进入“系统设置”修改 ComfyUI 密钥，并在 AI 服务管理中填写 LM Studio 或其他视觉模型服务。
 8. 安装 ComfyUI 插件：复制 `comfyui_plugin/ComfyUI-VisualPromptLibrary` 到 `ComfyUI/custom_nodes/`，在 ComfyUI Python 环境执行 `pip install -r requirements.txt`，重启 ComfyUI。节点服务器地址填 `http://飞牛IP:8765`，API Key 填网页系统设置中的 ComfyUI 密钥。
 
-如果 GHCR 镜像暂时无法拉取，也可以在飞牛上使用源码构建：下载整个 GitHub 仓库 ZIP 并解压，在项目根目录执行：
+如果 Docker Hub 镜像暂时无法拉取，也可以在飞牛上使用源码构建：下载整个 GitHub 仓库 ZIP 并解压，在项目根目录执行：
 
 ```bash
 cp .env.example .env
@@ -141,7 +141,7 @@ docker compose -f docker-compose.fnos-build.yml ps
 ```yaml
 services:
   visual-prompt-library:
-    image: ghcr.io/orangewoker/ai-prompt-library:latest
+    image: allenpie/visual-prompt-library:latest
     ports:
       - "8765:8765"
     volumes:
@@ -159,10 +159,10 @@ services:
 
 ```bash
 docker compose build
-docker buildx build --platform linux/amd64,linux/arm64 -t USERNAME/visual-prompt-library:latest -t USERNAME/visual-prompt-library:v1.0.0 --push .
+docker buildx build --platform linux/amd64,linux/arm64 -t allenpie/visual-prompt-library:latest -t allenpie/visual-prompt-library:v1.0.0 --push .
 ```
 
-未登录 Docker Hub / GHCR 时不会自动发布；先执行对应 registry 的 `docker login`。
+当前已发布 Docker Hub 多架构镜像：`allenpie/visual-prompt-library:latest` 和 `allenpie/visual-prompt-library:v1.0.0`，支持 `linux/amd64`、`linux/arm64`。未登录对应 registry 时不会自动发布；先执行 `docker login`。
 
 ## 10. 常见排查
 

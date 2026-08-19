@@ -8,7 +8,7 @@ from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 from .config import settings
 from .database import get_db
-from .models import AppSetting, User
+from .models import AppSetting, ComfyApiKey, User
 
 
 def hash_password(password: str) -> str:
@@ -61,9 +61,35 @@ def comfyui_key(db: Session) -> str:
     return row.value if row and row.value else settings.comfyui_api_key
 
 
+def hash_api_key(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def mask_api_key(value: str) -> str:
+    return (value[:3] + "••••••••" + value[-4:]) if len(value) > 7 else ("••••••••" if value else "")
+
+
 def require_auth(authorization: str | None = Header(default=None), x_api_key: str | None = Header(default=None), db: Session = Depends(get_db)):
-    if x_api_key and (hmac.compare_digest(x_api_key, settings.api_key) or hmac.compare_digest(x_api_key, comfyui_key(db))):
-        return ensure_admin(db)
+    if x_api_key:
+        if hmac.compare_digest(x_api_key, settings.api_key):
+            user = ensure_admin(db)
+            user._api_category_ids = None
+            user._is_comfy_api_key = False
+            return user
+        digest = hash_api_key(x_api_key)
+        api_key = db.query(ComfyApiKey).filter(ComfyApiKey.enabled.is_(True), ComfyApiKey.key_hash == digest).first()
+        if api_key:
+            user = ensure_admin(db)
+            user._api_category_ids = {category.id for category in api_key.category_access} or None
+            user._is_comfy_api_key = True
+            return user
+        # 仅兼容尚未创建新密钥表记录的旧部署；正常启动迁移完成后统一走上方记录，
+        # 以便默认密钥也能正确应用启停和分类范围。
+        if not db.query(ComfyApiKey.id).first() and hmac.compare_digest(x_api_key, comfyui_key(db)):
+            user = ensure_admin(db)
+            user._api_category_ids = None
+            user._is_comfy_api_key = True
+            return user
     username = token_username(authorization[7:]) if authorization and authorization.lower().startswith("bearer ") else None
     if username:
         user = db.query(User).filter(User.username == username, User.enabled.is_(True)).first()
@@ -73,6 +99,8 @@ def require_auth(authorization: str | None = Header(default=None), x_api_key: st
 
 
 def require_admin(current_user: User = Depends(require_auth)):
+    if getattr(current_user, "_is_comfy_api_key", False):
+        raise HTTPException(status_code=403, detail="ComfyUI 密钥不能访问管理接口")
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="只有管理员可以执行此操作")
     return current_user

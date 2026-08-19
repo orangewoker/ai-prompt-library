@@ -8,3 +8,5 @@ backend/**/*.pyc
 comfyui_plugin/**/__pycache__/
 *.log
 .pytest_cache/
+release/
+AI Prompt Library 一次性构建任务书.md

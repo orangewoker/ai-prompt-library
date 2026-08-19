@@ -1,0 +1,74 @@
+name: Build unsigned AI-Lib iOS IPA
+
+on:
+  push:
+    branches: [ios]
+    paths:
+      - 'mobile/ai_lib_ios/**'
+      - '.github/workflows/ios-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ai-lib-ios-unsigned-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-unsigned-ipa:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile/ai_lib_ios
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-pub
+
+      - name: Test
+        run: flutter test --no-pub
+
+      - name: Build unsigned iOS app
+        run: flutter build ios --release --no-codesign
+
+      - name: Read version
+        id: version
+        run: |
+          FULL_VERSION="$(awk '/^version:/{print $2}' pubspec.yaml)"
+          echo "version=${FULL_VERSION%%+*}" >> "$GITHUB_OUTPUT"
+
+      - name: Package unsigned IPA
+        run: |
+          rm -rf build/ios/unsigned-ipa
+          mkdir -p build/ios/unsigned-ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ios/unsigned-ipa/Payload/AI-Lib.app
+          cd build/ios/unsigned-ipa
+          zip -qry "../AI-Lib-${{ steps.version.outputs.version }}-unsigned.ipa" Payload
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Lib-unsigned-ipa
+          path: mobile/ai_lib_ios/build/ios/AI-Lib-*-unsigned.ipa
+
+      - name: Publish prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-v${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: AI-Lib iOS ${{ steps.version.outputs.version }}
+          body: Unsigned AI-Lib iOS IPA for sideload re-signing.
+          prerelease: true
+          files: mobile/ai_lib_ios/build/ios/AI-Lib-${{ steps.version.outputs.version }}-unsigned.ipa

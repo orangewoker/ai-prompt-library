@@ -10,6 +10,7 @@ AI Prompt Library 是一个可自托管的图片提示词素材库：上传图�
 - 多分类随机抽取完整提示词，支持可复现 Seed
 - OpenAI Compatible Provider，兼容 LM Studio 等服务
 - 管理员账号、分类权限、系统提示词模板、ComfyUI 密钥和备份导出
+- 支持多个 ComfyUI 访问密钥，并为每个密钥限制可访问分类
 - ComfyUI 中文节点：随机抽取、指定素材
 - AI-Lib iOS 客户端：图片分析、服务端管理、长按保存素材到相册
 
@@ -74,7 +75,7 @@ Provider 使用 OpenAI Compatible API。Docker 中连接宿主机服务时使用
 pip install -r comfyui_plugin/ComfyUI-VisualPromptLibrary/requirements.txt
 ```
 
-将插件目录复制到 `ComfyUI/custom_nodes/` 并重启 ComfyUI。服务器地址填写部署服务的根地址，不要附加 `/api/v1`；API Key 使用网页“系统设置”中的 ComfyUI 密钥。
+将插件目录复制到 `ComfyUI/custom_nodes/` 并重启 ComfyUI。服务器地址填写部署服务的根地址，不要附加 `/api/v1`；API Key 使用网页“系统设置”中为该工作流创建的 ComfyUI 密钥。密钥可以限制到一个或多个分类，留空分类表示全部分类。
 
 ## AI-Lib iOS
 
@@ -94,7 +95,7 @@ iOS 未签名 IPA 由 `.github/workflows/ios-build.yml` 在 macOS runner 上构�
 
 ## API
 
-统一前缀为 `/api/v1`，主要路由包括：`health`、`auth/login`、`categories`、`assets`、`providers`、`prompt-profiles`、`jobs`、`random`、`export`、`backup`。
+统一前缀为 `/api/v1`，主要路由包括：`health`、`auth/login`、`categories`、`assets`、`providers`、`prompt-profiles`、`jobs`、`random`、`export`、`backup`、`comfyui-keys`。ComfyUI 密钥只能访问允许分类的素材、分类和随机接口，不能调用管理接口。
 
 ```bash
 curl http://localhost:8765/api/v1/health
@@ -113,6 +114,7 @@ curl -X POST http://localhost:8765/api/v1/random \
 
 - `.env` 仅用于本地部署，不提交仓库。
 - Provider API Key 不返回明文，日志不记录完整密钥。
+- ComfyUI 密钥只在创建时返回一次，数据库保存哈希；编辑和列表只显示掩码。
 - 公开仓库只包含占位配置和文档示例，不包含真实服务商地址、真实 Token 或真实密码。
 - 如果曾经把真实密钥提交到 Git，请立即撤销并重新生成；仅删除文件不能使旧提交中的密钥失效。
 

@@ -20,7 +20,8 @@ class ProviderIn(BaseModel):
     name: str
     base_url: str
     api_key: str = ""
-    model: str
+    model: str = ""
+    models: list[str] = Field(default_factory=list)
     enabled: bool = True
 
 
@@ -29,6 +30,7 @@ class ProviderPatch(BaseModel):
     base_url: str | None = None
     api_key: str | None = None
     model: str | None = None
+    models: list[str] | None = None
     enabled: bool | None = None
 
 
@@ -78,3 +80,17 @@ class UserPatch(BaseModel):
 
 class SettingsPatch(BaseModel):
     comfyui_api_key: str = Field(min_length=1, max_length=500)
+
+
+class ComfyApiKeyIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    key: str = Field(default="", max_length=500)
+    enabled: bool = True
+    category_ids: list[int] = Field(default_factory=list)
+
+
+class ComfyApiKeyPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    key: str | None = Field(default=None, max_length=500)
+    enabled: bool | None = None
+    category_ids: list[int] | None = None

@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, Float, Table, Column, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, Float, Table, Column, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .database import Base
 
@@ -8,6 +8,13 @@ user_category_access = Table(
     "user_category_access",
     Base.metadata,
     Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("category_id", ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True),
+)
+
+comfy_api_key_category_access = Table(
+    "comfy_api_key_category_access",
+    Base.metadata,
+    Column("api_key_id", ForeignKey("comfy_api_keys.id", ondelete="CASCADE"), primary_key=True),
     Column("category_id", ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True),
 )
 
@@ -45,17 +52,42 @@ class AppSetting(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
+class ComfyApiKey(Base):
+    __tablename__ = "comfy_api_keys"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    key_prefix: Mapped[str] = mapped_column(String(12), default="")
+    key_suffix: Mapped[str] = mapped_column(String(12), default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    category_access: Mapped[list["Category"]] = relationship(secondary=comfy_api_key_category_access, lazy="selectin")
+
+
 class Provider(Base):
     __tablename__ = "providers"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120))
     base_url: Mapped[str] = mapped_column(String(500))
     api_key: Mapped[str] = mapped_column(String(500), default="")
-    model: Mapped[str] = mapped_column(String(200))
+    # 保留 model 作为旧版客户端的默认模型字段；新版模型列表存放在 provider_models。
+    model: Mapped[str] = mapped_column(String(200), default="")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    models: Mapped[list["ProviderModel"]] = relationship(back_populates="provider", cascade="all, delete-orphan", order_by="ProviderModel.id")
+
+
+class ProviderModel(Base):
+    __tablename__ = "provider_models"
+    __table_args__ = (UniqueConstraint("provider_id", "model_name", name="uq_provider_model"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    provider_id: Mapped[int] = mapped_column(ForeignKey("providers.id", ondelete="CASCADE"), index=True)
+    model_name: Mapped[str] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    provider: Mapped[Provider] = relationship(back_populates="models")
 
 
 class PromptProfile(Base):

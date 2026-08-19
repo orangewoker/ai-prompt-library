@@ -223,7 +223,10 @@ class ProvidersAdmin extends StatelessWidget {
 
   Future<void> action(BuildContext context, String action, JsonMap item) async {
     try {
-      if (action == 'edit') return edit(context, item);
+      if (action == 'edit') {
+        await edit(context, item);
+        return;
+      }
       if (action == 'test') {
         final result = await controller.testProvider(asInt(item['id']));
         if (context.mounted) toast(context, asString(result['message']));

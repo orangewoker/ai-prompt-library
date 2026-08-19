@@ -68,11 +68,12 @@ pip install -r comfyui_plugin/ComfyUI-VisualPromptLibrary/requirements.txt
 
 ## AI-Lib iOS
 
-工程位于 `mobile/ai_lib_ios`。iPhone 不能访问电脑的 `127.0.0.1`，请在客户端填写服务端所在电脑或 NAS 的局域网地址。客户端支持上传分析、素材编辑、Provider/模板/分类/任务/用户管理、备份导出和长按保存图片到系统相册。
+完整工程位于 `ios` 分支的 `mobile/ai_lib_ios`。iPhone 不能访问电脑的 `127.0.0.1`，请在客户端填写服务端所在电脑或 NAS 的局域网地址。客户端支持上传分析、素材编辑、Provider/模板/分类/任务/用户管理、备份导出和长按保存图片到系统相册。
 
 Windows 本地检查：
 
 ```powershell
+git switch ios
 cd mobile/ai_lib_ios
 flutter pub get
 flutter analyze --no-pub

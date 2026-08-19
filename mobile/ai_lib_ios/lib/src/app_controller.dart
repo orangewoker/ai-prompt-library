@@ -51,6 +51,9 @@ class AppController extends ChangeNotifier {
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
     baseUrl = _prefs?.getString('ai_lib_base_url') ?? defaultBaseUrl;
+    assetSearch = _prefs?.getString('ai_lib_asset_search') ?? '';
+    assetCategoryId = _prefs?.getInt('ai_lib_asset_category_id');
+    assetStatus = _prefs?.getString('ai_lib_asset_status') ?? '';
     token = _prefs?.getString('ai_lib_token');
     final cachedUser = _prefs?.getString('ai_lib_user');
     if (cachedUser != null) {
@@ -156,6 +159,7 @@ class AppController extends ChangeNotifier {
       assetSearch = search;
       assetCategoryId = categoryId;
       assetStatus = status ?? '';
+      await _saveAssetFilters();
     }
     final effectiveSearch = applyFilters ? search : assetSearch;
     final effectiveCategoryId = applyFilters ? categoryId : assetCategoryId;
@@ -436,6 +440,16 @@ class AppController extends ChangeNotifier {
     if (token != null) await _prefs?.setString('ai_lib_token', token!);
     if (user != null) {
       await _prefs?.setString('ai_lib_user', jsonEncode(user!.toJson()));
+    }
+  }
+
+  Future<void> _saveAssetFilters() async {
+    await _prefs?.setString('ai_lib_asset_search', assetSearch);
+    await _prefs?.setString('ai_lib_asset_status', assetStatus);
+    if (assetCategoryId == null) {
+      await _prefs?.remove('ai_lib_asset_category_id');
+    } else {
+      await _prefs?.setInt('ai_lib_asset_category_id', assetCategoryId!);
     }
   }
 

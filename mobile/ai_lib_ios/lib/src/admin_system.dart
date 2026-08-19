@@ -14,10 +14,10 @@ class JobsAdmin extends StatelessWidget {
     child: ListView(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 28),
       children: [
-        if (controller.jobs.isEmpty)
+        if (controller.currentJobs.isEmpty)
           const EmptyView('暂无分析任务', '上传图片后，后台任务会显示在这里', icon: Icons.task_alt)
         else
-          ...controller.jobs.map(
+          ...controller.currentJobs.map(
             (job) => Card(
               child: ListTile(
                 leading: Icon(

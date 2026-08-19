@@ -37,6 +37,9 @@ class _HomePageState extends State<HomePage> {
       if (widget.controller.isAdmin) AdminPage(controller: widget.controller),
     ];
     return Scaffold(
+      extendBody: true,
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(
           titles[index],
@@ -75,8 +78,10 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 8),
         ],
       ),
-      body: SafeArea(
-        child: IndexedStack(index: index, children: pages),
+      body: LiquidBackground(
+        child: SafeArea(
+          child: IndexedStack(index: index, children: pages),
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
@@ -122,10 +127,12 @@ class Dashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = controller.jobs
+    final active = controller.currentJobs
         .where((e) => ['pending', 'processing'].contains(e['status']))
         .length;
-    final failed = controller.jobs.where((e) => e['status'] == 'failed').length;
+    final failed = controller.currentJobs
+        .where((e) => e['status'] == 'failed')
+        .length;
     return RefreshIndicator(
       onRefresh: controller.refreshAll,
       child: ListView(
@@ -253,24 +260,22 @@ class _Metric extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(13),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
-          ),
-          Text(
-            label,
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-          ),
-        ],
-      ),
+  Widget build(BuildContext context) => GlassCard(
+    padding: const EdgeInsets.all(13),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+        ),
+        Text(
+          label,
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+        ),
+      ],
     ),
   );
 }
@@ -283,10 +288,10 @@ class _Shortcut extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => GlassCard(
     child: InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(20),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Row(

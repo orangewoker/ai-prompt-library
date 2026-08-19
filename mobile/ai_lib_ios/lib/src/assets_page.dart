@@ -21,6 +21,14 @@ class _AssetsPageState extends State<AssetsPage> {
   bool loading = false;
 
   @override
+  void initState() {
+    super.initState();
+    categoryId = widget.controller.assetCategoryId;
+    status = widget.controller.assetStatus;
+    search.text = widget.controller.assetSearch;
+  }
+
+  @override
   void dispose() {
     search.dispose();
     super.dispose();
@@ -33,6 +41,7 @@ class _AssetsPageState extends State<AssetsPage> {
         search: search.text,
         categoryId: categoryId,
         status: status,
+        applyFilters: true,
       );
     } catch (error) {
       if (mounted) toast(context, error);
@@ -42,7 +51,7 @@ class _AssetsPageState extends State<AssetsPage> {
   }
 
   void upload() {
-    if (widget.controller.categories.isEmpty) {
+    if (widget.controller.activeCategories.isEmpty) {
       toast(context, '请先在管理中心创建分类');
       return;
     }
@@ -100,7 +109,7 @@ class _AssetsPageState extends State<AssetsPage> {
               },
             ),
             const SizedBox(width: 7),
-            ...widget.controller.categories.map((category) {
+            ...widget.controller.activeCategories.map((category) {
               final id = asInt(category['id']);
               return Padding(
                 padding: const EdgeInsets.only(right: 7),
@@ -734,7 +743,7 @@ class _UploadSheetState extends State<UploadSheet> {
           DropdownButtonFormField<int>(
             initialValue: categoryId,
             decoration: const InputDecoration(labelText: '素材分类 *'),
-            items: widget.controller.categories
+            items: widget.controller.activeCategories
                 .map(
                   (item) => DropdownMenuItem(
                     value: asInt(item['id']),

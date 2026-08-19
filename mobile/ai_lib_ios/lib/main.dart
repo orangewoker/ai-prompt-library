@@ -37,17 +37,32 @@ class _AiLibAppState extends State<AiLibApp> {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff6658d3)),
-        scaffoldBackgroundColor: const Color(0xfff7f7fb),
+        scaffoldBackgroundColor: const Color(0xfff4f2fb),
         cardTheme: CardThemeData(
           elevation: 0,
-          color: Colors.white,
+          color: Colors.white.withValues(alpha: .60),
+          surfaceTintColor: Colors.white.withValues(alpha: .22),
+          shadowColor: const Color(0x226658d3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: Colors.white.withValues(alpha: .72)),
           ),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: Colors.white.withValues(alpha: .56),
+          surfaceTintColor: Colors.transparent,
+          indicatorColor: Colors.white.withValues(alpha: .85),
+          elevation: 0,
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white,
+          fillColor: Colors.white.withValues(alpha: .72),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),

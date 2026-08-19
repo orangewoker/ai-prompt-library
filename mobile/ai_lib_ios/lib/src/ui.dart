@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import 'api_client.dart';
@@ -138,6 +140,96 @@ class EmptyView extends StatelessWidget {
           style: TextStyle(color: Colors.grey.shade600),
         ),
       ],
+    ),
+  );
+}
+
+class LiquidBackground extends StatelessWidget {
+  const LiquidBackground({required this.child, super.key});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xfff0edff), Color(0xfff9f9ff), Color(0xffeef7ff)],
+          ),
+        ),
+      ),
+      Positioned(
+        top: -80,
+        left: -50,
+        child: _GlowOrb(color: const Color(0x996d5ce7), size: 220),
+      ),
+      Positioned(
+        top: 220,
+        right: -85,
+        child: _GlowOrb(color: const Color(0x6687d8ff), size: 230),
+      ),
+      Positioned(
+        bottom: 100,
+        left: 80,
+        child: _GlowOrb(color: const Color(0x55ec9ffb), size: 180),
+      ),
+      Positioned.fill(
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 35, sigmaY: 35),
+          child: Container(color: Colors.white.withValues(alpha: .18)),
+        ),
+      ),
+      child,
+    ],
+  );
+}
+
+class _GlowOrb extends StatelessWidget {
+  const _GlowOrb({required this.color, required this.size});
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: color,
+      boxShadow: [BoxShadow(color: color, blurRadius: 60, spreadRadius: 20)],
+    ),
+  );
+}
+
+class GlassCard extends StatelessWidget {
+  const GlassCard({required this.child, this.padding, super.key});
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(20),
+    child: BackdropFilter(
+      filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+      child: Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: .42),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: .75)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x146658d3),
+              blurRadius: 22,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        child: child,
+      ),
     ),
   );
 }

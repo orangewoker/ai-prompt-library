@@ -94,7 +94,7 @@ class _RandomPageState extends State<RandomPage> {
               Wrap(
                 spacing: 7,
                 runSpacing: 7,
-                children: widget.controller.categories.map((category) {
+                children: widget.controller.activeCategories.map((category) {
                   final id = asInt(category['id']);
                   return FilterChip(
                     label: Text(asString(category['name'])),

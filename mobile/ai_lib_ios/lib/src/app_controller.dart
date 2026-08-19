@@ -29,10 +29,24 @@ class AppController extends ChangeNotifier {
   List<JsonMap> users = [];
   JsonMap settings = {};
   int assetTotal = 0;
+  String assetSearch = '';
+  int? assetCategoryId;
+  String assetStatus = '';
   Timer? _jobTimer;
 
   bool get loggedIn => token != null && user != null && api != null;
   bool get isAdmin => user?.isAdmin ?? false;
+  List<JsonMap> get activeCategories =>
+      categories.where((item) => asBool(item['enabled'], true)).toList();
+  List<JsonMap> get currentJobs {
+    final seen = <int>{};
+    return jobs.where((job) {
+      final id = asInt(job['asset_id']);
+      if (seen.contains(id)) return false;
+      seen.add(id);
+      return true;
+    }).toList();
+  }
 
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
@@ -136,14 +150,23 @@ class AppController extends ChangeNotifier {
     String search = '',
     int? categoryId,
     String? status,
+    bool applyFilters = false,
   }) async {
+    if (applyFilters && page == 1) {
+      assetSearch = search;
+      assetCategoryId = categoryId;
+      assetStatus = status ?? '';
+    }
+    final effectiveSearch = applyFilters ? search : assetSearch;
+    final effectiveCategoryId = applyFilters ? categoryId : assetCategoryId;
+    final effectiveStatus = applyFilters ? (status ?? '') : assetStatus;
     final query = <String, Object?>{
       'page': page,
       'page_size': 80,
-      if (search.trim().isNotEmpty) 'search': search.trim(),
-      if (status != null && status.isNotEmpty) 'status': status,
+      if (effectiveSearch.trim().isNotEmpty) 'search': effectiveSearch.trim(),
+      if (effectiveStatus.isNotEmpty) 'status': effectiveStatus,
     };
-    if (categoryId != null) query['category_id'] = categoryId;
+    if (effectiveCategoryId != null) query['category_id'] = effectiveCategoryId;
     final data = PageResult.fromJson(
       await api!.get('/api/v1/assets', query: query) as JsonMap,
     );
@@ -422,7 +445,7 @@ class AppController extends ChangeNotifier {
     _jobTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
       try {
         await loadJobs();
-        if (jobs.any(
+        if (currentJobs.any(
           (job) => job['status'] == 'completed' || job['status'] == 'failed',
         )) {
           await loadAssets();

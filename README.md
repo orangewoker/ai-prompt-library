@@ -13,6 +13,16 @@ AI Prompt Library 是一个可自托管的图片提示词素材库：上传图�
 - ComfyUI 中文节点：随机抽取、指定素材
 - AI-Lib iOS 客户端：图片分析、服务端管理、长按保存素材到相册
 
+## 预览
+
+### AI-Lib iOS 仪表盘
+
+![AI-Lib iOS 仪表盘](docs/previews/ios-dashboard.png)
+
+### AI-Lib iOS 素材库
+
+![AI-Lib iOS 素材库](docs/previews/ios-library.png)
+
 ## 快速启动
 
 复制示例环境变量并修改密码和密钥：

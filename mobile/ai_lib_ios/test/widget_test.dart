@@ -4,11 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('服务地址会自动规范化', () {
-    final client = ApiClient(baseUrl: 'http://192.168.1.20:8765/api/v1/');
-    expect(client.baseUrl, 'http://192.168.1.20:8765');
+    final client = ApiClient(baseUrl: 'http://server.example/api/v1/');
+    expect(client.baseUrl, 'http://server.example');
     expect(
       client.uri('/api/v1/health').toString(),
-      'http://192.168.1.20:8765/api/v1/health',
+      'http://server.example/api/v1/health',
     );
   });
 

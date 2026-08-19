@@ -17,7 +17,7 @@ AI Prompt Library 的原生 Flutter iOS 客户端，直接连接现有 FastAPI �
 iPhone 无法访问 Windows 的 `127.0.0.1`。服务在电脑或 NAS 上运行时，填写局域网地址，例如：
 
 ```text
-http://192.168.1.10:8765
+http://<SERVER_LAN_IP>:8765
 ```
 
 不要在地址末尾填写 `/api/v1`；即使填写，客户端也会自动移除。

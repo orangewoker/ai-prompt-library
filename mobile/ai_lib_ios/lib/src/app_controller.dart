@@ -27,6 +27,7 @@ class AppController extends ChangeNotifier {
   List<JsonMap> profiles = [];
   List<JsonMap> jobs = [];
   List<JsonMap> users = [];
+  List<JsonMap> comfyKeys = [];
   JsonMap settings = {};
   int assetTotal = 0;
   String assetSearch = '';
@@ -63,7 +64,7 @@ class AppController extends ChangeNotifier {
         token = null;
       }
     }
-    api = ApiClient(baseUrl: baseUrl, token: token);
+    api = _authenticatedApi();
     initialized = true;
     notifyListeners();
     if (loggedIn) {
@@ -92,7 +93,7 @@ class AppController extends ChangeNotifier {
       token = asString(response['access_token']);
       baseUrl = nextApi.baseUrl;
       user = AppUser.fromJson(response);
-      api = ApiClient(baseUrl: baseUrl, token: token);
+      api = _authenticatedApi();
       await _saveSession();
       await refreshAll();
       _startJobPolling();
@@ -114,6 +115,8 @@ class AppController extends ChangeNotifier {
     profiles = [];
     jobs = [];
     users = [];
+    comfyKeys = [];
+    settings = {};
     await _prefs?.remove('ai_lib_token');
     await _prefs?.remove('ai_lib_user');
     notifyListeners();
@@ -122,7 +125,7 @@ class AppController extends ChangeNotifier {
   Future<void> setBaseUrl(String value) async {
     final next = ApiClient(baseUrl: value);
     baseUrl = next.baseUrl;
-    api = ApiClient(baseUrl: baseUrl, token: token);
+    api = _authenticatedApi();
     await _prefs?.setString('ai_lib_base_url', baseUrl);
     notifyListeners();
   }
@@ -223,9 +226,15 @@ class AppController extends ChangeNotifier {
 
   Future<void> loadSettings() async {
     if (!isAdmin) return;
-    settings = Map<String, dynamic>.from(
-      await api!.get('/api/v1/settings') as Map,
-    );
+    final results = await Future.wait([
+      api!.get('/api/v1/settings'),
+      api!.get('/api/v1/comfyui-keys'),
+    ]);
+    settings = Map<String, dynamic>.from(results[0] as Map);
+    comfyKeys = (results[1] as List)
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
     notifyListeners();
   }
 
@@ -364,6 +373,27 @@ class AppController extends ChangeNotifier {
     await loadSettings();
   }
 
+  Future<JsonMap> createComfyKey(JsonMap body) async {
+    final result = Map<String, dynamic>.from(
+      await api!.post('/api/v1/comfyui-keys', body: body) as Map,
+    );
+    await loadSettings();
+    return result;
+  }
+
+  Future<JsonMap> updateComfyKey(int id, JsonMap body) async {
+    final result = Map<String, dynamic>.from(
+      await api!.patch('/api/v1/comfyui-keys/$id', body),
+    );
+    await loadSettings();
+    return result;
+  }
+
+  Future<void> deleteComfyKey(int id) async {
+    await api!.delete('/api/v1/comfyui-keys/$id');
+    await loadSettings();
+  }
+
   Future<JsonMap> uploadAssets(
     List<({String name, Uint8List bytes, String filename, String contentType})>
     files, {
@@ -441,6 +471,28 @@ class AppController extends ChangeNotifier {
     if (user != null) {
       await _prefs?.setString('ai_lib_user', jsonEncode(user!.toJson()));
     }
+  }
+
+  ApiClient _authenticatedApi() =>
+      ApiClient(baseUrl: baseUrl, token: token, onUnauthorized: _expireSession);
+
+  void _expireSession() {
+    if (token == null) return;
+    _jobTimer?.cancel();
+    token = null;
+    user = null;
+    api = ApiClient(baseUrl: baseUrl);
+    categories = [];
+    assets = [];
+    providers = [];
+    profiles = [];
+    jobs = [];
+    users = [];
+    comfyKeys = [];
+    settings = {};
+    _prefs?.remove('ai_lib_token');
+    _prefs?.remove('ai_lib_user');
+    notifyListeners();
   }
 
   Future<void> _saveAssetFilters() async {

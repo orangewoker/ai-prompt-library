@@ -299,6 +299,158 @@ class _SettingsAdminState extends State<SettingsAdmin> {
     }
   }
 
+  Future<void> showGeneratedKey(String key) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('请立即保存密钥'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('该密钥只显示一次，关闭后无法再次查看明文。'),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SelectableText(key),
+            ),
+          ],
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('我已保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> editComfyKey([JsonMap? item]) async {
+    final isDefault = asString(item?['name']) == '默认 ComfyUI 密钥';
+    final name = TextEditingController(text: asString(item?['name']));
+    final key = TextEditingController();
+    var enabled = asBool(item?['enabled'], true);
+    final categoryIds = (item?['category_ids'] as List? ?? [])
+        .map(asInt)
+        .toSet();
+    final save = await showDialog<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setLocal) => AlertDialog(
+          title: Text(item == null ? '新增 ComfyUI 密钥' : '编辑 ComfyUI 密钥'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: name,
+                  enabled: !isDefault,
+                  decoration: const InputDecoration(labelText: '密钥名称'),
+                ),
+                if (!isDefault) ...[
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: key,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: item == null ? '密钥（留空自动生成）' : '新密钥（留空不修改）',
+                    ),
+                  ),
+                ],
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('启用'),
+                  value: enabled,
+                  onChanged: (value) => setLocal(() => enabled = value),
+                ),
+                const Text(
+                  '可访问分类',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  categoryIds.isEmpty ? '当前允许全部分类' : '只允许已选择的分类',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+                ...widget.controller.categories.map((category) {
+                  final id = asInt(category['id']);
+                  return CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(asString(category['name'])),
+                    value: categoryIds.contains(id),
+                    onChanged: (value) => setLocal(
+                      () => value == true
+                          ? categoryIds.add(id)
+                          : categoryIds.remove(id),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('保存'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (save != true || name.text.trim().isEmpty) {
+      name.dispose();
+      key.dispose();
+      return;
+    }
+    try {
+      final body = <String, dynamic>{
+        if (!isDefault) 'name': name.text.trim(),
+        'enabled': enabled,
+        'category_ids': categoryIds.toList(),
+      };
+      if (item == null || key.text.isNotEmpty) body['key'] = key.text;
+      final result = item == null
+          ? await widget.controller.createComfyKey(body)
+          : await widget.controller.updateComfyKey(asInt(item['id']), body);
+      if (!mounted) return;
+      final generatedKey = asString(result['key']);
+      if (generatedKey.isNotEmpty) await showGeneratedKey(generatedKey);
+      if (mounted) toast(context, 'ComfyUI 密钥已保存');
+    } catch (error) {
+      if (mounted) toast(context, error);
+    } finally {
+      name.dispose();
+      key.dispose();
+    }
+  }
+
+  Future<void> deleteComfyKey(JsonMap item) async {
+    if (!await confirm(context, '确定删除密钥“${asString(item['name'])}”？')) {
+      return;
+    }
+    try {
+      await widget.controller.deleteComfyKey(asInt(item['id']));
+      if (mounted) toast(context, '密钥已删除');
+    } catch (error) {
+      if (mounted) toast(context, error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.fromLTRB(14, 0, 14, 28),
@@ -349,7 +501,7 @@ class _SettingsAdminState extends State<SettingsAdmin> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'ComfyUI 访问密钥',
+                '默认兼容密钥',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 5),
@@ -381,6 +533,72 @@ class _SettingsAdminState extends State<SettingsAdmin> {
           ),
         ),
       ),
+      const SizedBox(height: 18),
+      Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'ComfyUI 密钥管理',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: editComfyKey,
+            icon: const Icon(Icons.add),
+            label: const Text('新增'),
+          ),
+        ],
+      ),
+      const SizedBox(height: 5),
+      Text(
+        '可以为不同工作流设置独立密钥和分类访问范围。',
+        style: TextStyle(color: Colors.grey.shade600),
+      ),
+      const SizedBox(height: 8),
+      if (widget.controller.comfyKeys.isEmpty)
+        const EmptyView(
+          '暂无 ComfyUI 密钥',
+          '点击新增创建第一个访问密钥',
+          icon: Icons.key_outlined,
+        )
+      else
+        ...widget.controller.comfyKeys.map((item) {
+          final isDefault = asString(item['name']) == '默认 ComfyUI 密钥';
+          final categoryNames = (item['category_names'] as List? ?? [])
+              .map(asString)
+              .where((name) => name.isNotEmpty)
+              .join('、');
+          final scope = asBool(item['all_categories']) ? '全部分类' : categoryNames;
+          return Card(
+            child: ListTile(
+              leading: CircleAvatar(
+                child: Icon(
+                  asBool(item['enabled'], true)
+                      ? Icons.key
+                      : Icons.key_off_outlined,
+                ),
+              ),
+              title: Text(
+                asString(item['name']),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                '${asString(item['key_masked'])}\n${asBool(item['enabled'], true) ? '启用' : '停用'} · ${scope.isEmpty ? '未分配分类' : scope}',
+              ),
+              isThreeLine: true,
+              trailing: PopupMenuButton<String>(
+                onSelected: (action) => action == 'edit'
+                    ? editComfyKey(item)
+                    : deleteComfyKey(item),
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'edit', child: Text('编辑')),
+                  if (!isDefault)
+                    const PopupMenuItem(value: 'delete', child: Text('删除')),
+                ],
+              ),
+            ),
+          );
+        }),
     ],
   );
 }

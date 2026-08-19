@@ -15,11 +15,12 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
-  ApiClient({required String baseUrl, this.token})
+  ApiClient({required String baseUrl, this.token, this.onUnauthorized})
     : baseUrl = _normalize(baseUrl);
 
   final String baseUrl;
   String? token;
+  final void Function()? onUnauthorized;
 
   static String _normalize(String value) {
     var result = value.trim();
@@ -92,6 +93,7 @@ class ApiClient {
   }) async {
     final response = await http.get(uri(path, query), headers: headers);
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      if (response.statusCode == 401) onUnauthorized?.call();
       throw ApiException(
         _errorMessage(response),
         statusCode: response.statusCode,
@@ -140,6 +142,7 @@ class ApiClient {
       data = response.body;
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      if (response.statusCode == 401) onUnauthorized?.call();
       throw ApiException(
         _errorMessage(response, decoded: data),
         statusCode: response.statusCode,
